@@ -1,0 +1,58 @@
+services:
+  web:
+    build: .
+    container_name: bizsaathi-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_NAME: BizSaathi
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      DATABASE_URL: postgresql://bizsaathi:bizsaathi@postgres:5432/bizsaathi?schema=public
+      AUTH_SECRET: change-this-to-a-long-random-production-secret
+      AUTH_COOKIE_NAME: bizsaathi_session
+      PAPERCLIP_API_URL: http://paperclip:3001
+      PAPERCLIP_API_KEY: ""
+      OLLAMA_BASE_URL: http://ollama:11434
+      DEFAULT_MODEL_PROVIDER: ollama
+      DEFAULT_MODEL_NAME: llama3.1:8b
+      RUN_MIGRATIONS: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - bizsaathi
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: bizsaathi-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bizsaathi
+      POSTGRES_PASSWORD: bizsaathi
+      POSTGRES_DB: bizsaathi
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bizsaathi -d bizsaathi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bizsaathi
+
+volumes:
+  postgres_data:
+
+networks:
+  bizsaathi:
+    driver: bridge

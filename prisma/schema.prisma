@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TenantPlan {
+  FREE
+  STARTER
+  GROWTH
+  AGENCY
+  ENTERPRISE
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  APPROVER
+  OPERATOR
+  VIEWER
+}
+
+enum AgentKind {
+  CEO
+  MARKETING
+  CONTENT
+  SOCIAL
+  SALES_CRM
+  SUPPORT
+  FINANCE
+  COMPLIANCE
+  CUSTOM
+}
+
+enum AgentStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DISABLED
+}
+
+enum TaskStatus {
+  QUEUED
+  RUNNING
+  WAITING_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  CANCELLED
+}
+
+enum IntegrationProvider {
+  PAPERCLIP
+  OLLAMA
+  GMAIL
+  GOOGLE_CALENDAR
+  META
+  LINKEDIN
+  X
+  WHATSAPP
+  CRM
+  STORAGE
+  CUSTOM
+}
+
+enum LeadStage {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+  NURTURE
+}
+
+model Tenant {
+  id           String            @id @default(cuid())
+  name         String
+  slug         String            @unique
+  plan         TenantPlan        @default(FREE)
+  isActive     Boolean           @default(true)
+  settings     Json              @default("{}")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  users        User[]
+  agents       Agent[]
+  tasks        AgentTask[]
+  approvals    ApprovalRequest[]
+  integrations Integration[]
+  campaigns    Campaign[]
+  leads        Lead[]
+  auditLogs    AuditLog[]
+}
+
+model User {
+  id           String            @id @default(cuid())
+  tenantId     String
+  email        String
+  name         String?
+  passwordHash String
+  role         UserRole          @default(VIEWER)
+  isActive     Boolean           @default(true)
+  lastLoginAt  DateTime?
+  preferences  Json              @default("{}")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  approvals    ApprovalRequest[] @relation("ApprovalRequester")
+  decisions    ApprovalRequest[] @relation("ApprovalDecider")
+  auditLogs    AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([email])
+  @@index([tenantId, role])
+}
+
+model Agent {
+  id                  String      @id @default(cuid())
+  tenantId            String
+  name                String
+  slug                String
+  kind                AgentKind
+  status              AgentStatus @default(DRAFT)
+  mission             String
+  systemPrompt        String      @db.Text
+  modelProvider       String      @default("ollama")
+  modelName           String
+  adapterType         String      @default("http")
+  toolsAllowed        Json        @default("[]")
+  approvalRequiredFor Json        @default("[]")
+  budgetLimit         Decimal?    @db.Decimal(12, 2)
+  heartbeatCron       String?
+  metadata            Json        @default("{}")
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  tenant              Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tasks               AgentTask[]
+  runs                AgentRun[]
+  outputs             AgentOutput[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, kind, status])
+}
+
+model AgentTask {
+  id               String        @id @default(cuid())
+  tenantId         String
+  agentId          String
+  title            String
+  goal             String        @db.Text
+  status           TaskStatus    @default(QUEUED)
+  priority         Int           @default(3)
+  approvalRequired Boolean       @default(true)
+  metadata         Json          @default("{}")
+  dueAt            DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agent            Agent         @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  runs             AgentRun[]
+  outputs          AgentOutput[]
+  approvals        ApprovalRequest[]
+
+  @@index([tenantId, status, priority])
+  @@index([agentId, status])
+}
+
+model AgentRun {
+  id            String     @id @default(cuid())
+  agentId       String
+  taskId        String?
+  providerRunId String?
+  status        TaskStatus @default(QUEUED)
+  startedAt     DateTime   @default(now())
+  completedAt   DateTime?
+  input         Json       @default("{}")
+  output        Json       @default("{}")
+  error         String?    @db.Text
+  agent         Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  task          AgentTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([agentId, startedAt])
+  @@index([taskId, status])
+}
+
+model AgentOutput {
+  id          String     @id @default(cuid())
+  tenantId    String
+  agentId     String
+  taskId      String?
+  title       String
+  body        String     @db.Text
+  contentType String     @default("text")
+  riskLevel   String     @default("medium")
+  metadata    Json       @default("{}")
+  createdAt   DateTime   @default(now())
+  agent       Agent      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  task        AgentTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([agentId, createdAt])
+}
+
+model ApprovalRequest {
+  id             String         @id @default(cuid())
+  tenantId       String
+  taskId         String?
+  requestedById  String?
+  decidedById    String?
+  title          String
+  description    String         @db.Text
+  riskLevel      String         @default("medium")
+  actionType     String
+  payload        Json           @default("{}")
+  status         ApprovalStatus @default(PENDING)
+  decidedAt      DateTime?
+  decisionNote   String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  task           AgentTask?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  requestedBy    User?          @relation("ApprovalRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy      User?          @relation("ApprovalDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status, riskLevel])
+}
+
+model Integration {
+  id           String              @id @default(cuid())
+  tenantId     String
+  provider     IntegrationProvider
+  name         String
+  isEnabled    Boolean             @default(false)
+  config       Json                @default("{}")
+  secretRef    String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, provider, name])
+  @@index([tenantId, provider])
+}
+
+model Campaign {
+  id          String        @id @default(cuid())
+  tenantId    String
+  name        String
+  clientName  String?
+  objective   String        @db.Text
+  audience    String?
+  channels    Json          @default("[]")
+  status      String        @default("planning")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  content     ContentItem[]
+
+  @@index([tenantId, status])
+}
+
+model ContentItem {
+  id          String    @id @default(cuid())
+  campaignId  String
+  title       String
+  platform    String
+  body        String    @db.Text
+  status      String    @default("draft")
+  approvalId  String?
+  scheduledAt DateTime?
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  campaign    Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, status])
+}
+
+model Lead {
+  id          String    @id @default(cuid())
+  tenantId    String
+  name        String
+  company     String?
+  email       String?
+  phone       String?
+  source      String?
+  stage       LeadStage @default(NEW)
+  score       Int       @default(0)
+  nextAction  String?
+  notes       String?   @db.Text
+  metadata    Json      @default("{}")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, stage, score])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, action, createdAt])
+}
