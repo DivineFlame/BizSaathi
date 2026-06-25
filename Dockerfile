@@ -29,6 +29,6 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh && chown -R nextjs:nodejs /app
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 3001
+ENV PORT=3001
 CMD ["./docker-entrypoint.sh"]
