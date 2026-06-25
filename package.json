@@ -1,22 +1,24 @@
 {
   "name": "bizsaathi",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Role-based AI operations workspace for MSMEs and agencies, designed to work with Paperclip, Ollama, and governed human approvals.",
   "engines": {
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3080",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-8080}",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "docker:up": "docker compose up --build",
+    "dokploy:check": "node -e \"fetch('http://127.0.0.1:8080/api/health').then(r=>console.log(r.status)).catch(e=>{console.error(e);process.exit(1)})\""
   },
   "dependencies": {
     "@prisma/client": "7.8.0",

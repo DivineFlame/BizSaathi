@@ -1,54 +1,40 @@
 # BizSaathi
 
-BizSaathi is a production-oriented, responsive AI operations workspace for MSMEs and digital marketing agencies. It provides different UI workspaces for different AI agents, while keeping human approval, auditability, tenant isolation, and Paperclip/Ollama integration at the center of the product.
+BizSaathi is a responsive, role-based AI operations workspace for MSMEs and digital marketing agencies. It is designed to sit above Paperclip as the agent governance/control plane and connect role-specific AI workspaces to local or hosted agent runtimes such as Ollama, Hermes-style agents, or custom HTTP adapters.
 
 ## Current implementation
 
-This repository now includes:
-
-- Next.js App Router with TypeScript and Tailwind CSS v4
+- Next.js App Router application with TypeScript
 - Responsive UI for desktop, laptop, tablet, and mobile
-- Tenant onboarding and email/password login API foundation
-- Role-based agent manager and agent workspaces
-- Approval center for human-in-the-loop governance
-- Campaign studio and lead/CRM pipeline screens
-- Settings page for Paperclip, Ollama, model, and deployment configuration
-- PostgreSQL schema using Prisma for multi-tenant SaaS data
-- Paperclip task client placeholder with safe mock fallback
-- Dokploy-ready Dockerfile and raw compose file
-- Health check route for container monitoring
+- Role-based workspaces for CEO, Marketing, Content, Social, Sales/CRM, Support, Finance, and Compliance agents
+- Tenant onboarding and login/session API foundation
+- Approval Center with decision API
+- Campaign Studio with campaign creation API
+- Lead/CRM workspace with lead capture and scoring API
+- Content Studio placeholder for human editing workflows
+- Audit trail page and audit logging helper
+- Paperclip task adapter with safe mock/fallback mode
+- Ollama/Paperclip live connection checks
+- Prisma PostgreSQL multi-tenant SaaS schema
+- Dockerfile and Dokploy raw compose files
 
-## Architecture
+## Port policy
 
-```text
-BizSaathi responsive UI
-  -> Next.js API routes
-  -> PostgreSQL / Prisma
-  -> Paperclip control plane
-  -> Agent adapters
-  -> Ollama / Hermes / custom HTTP agents
-  -> External tools: Gmail, Meta, LinkedIn, X, WhatsApp, CRM, Calendar, Files
-```
+BizSaathi intentionally does **not** use port 3000.
+
+- App/container port: `8080`
+- Local Docker browser port: `3080`
+- Dokploy routing target: `8080`
 
 ## Local development
 
 ```bash
 npm install
 cp .env.example .env
-npm run db:generate
-npm run db:push
-npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:3000`.
-
-Demo login after seeding:
-
-```text
-Email: owner@bizsaathi.local
-Password: BizSaathi@12345
-```
+Open `http://localhost:3080`.
 
 ## Docker development
 
@@ -56,13 +42,36 @@ Password: BizSaathi@12345
 docker compose up --build
 ```
 
-The web app runs at `http://localhost:3000`.
+Open `http://localhost:3080`.
+
+## Database setup
+
+After configuring `DATABASE_URL`, run:
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+```
+
+For production migrations/deployment sync:
+
+```bash
+npm run db:migrate
+```
+
+If no migrations exist yet, the Docker entrypoint safely falls back to `prisma db push` for initial deployment when `RUN_MIGRATIONS=true`.
 
 ## Dokploy deployment
 
-Use `docker-compose.dokploy.yml` as the raw compose file in Dokploy.
+Use one of these files as raw compose:
 
-Required Dokploy environment variables:
+```text
+docker-compose.dokploy.yml                 # external PostgreSQL
+docker-compose.dokploy.with-postgres.yml   # app + private PostgreSQL
+```
+
+Required environment variables:
 
 ```env
 NEXT_PUBLIC_APP_URL=https://your-domain.com
@@ -73,35 +82,22 @@ OLLAMA_BASE_URL=http://ollama:11434
 RUN_MIGRATIONS=true
 ```
 
-Generate `AUTH_SECRET`:
+## Default seed login
 
-```bash
-openssl rand -base64 32
-```
-
-## Important routes
+Only available after running `npm run db:seed`:
 
 ```text
-/                Main operating dashboard
-/onboarding      Create first tenant and owner user
-/login           Login page
-/agents          Agent manager
-/agents/ceo      CEO agent workspace
-/agents/marketing
-/agents/content
-/agents/social
-/agents/sales-crm
-/approvals       Human approval queue
-/campaigns       Campaign studio
-/leads           CRM pipeline
-/settings        Paperclip/Ollama settings
-/api/health      Container health check
+Email: owner@bizsaathi.local
+Password: BizSaathi@12345
 ```
 
-## Next build steps
+## Build roadmap
 
-1. Connect Agent Manager directly to Paperclip's live API once the final Paperclip adapter endpoint is fixed.
-2. Add invite-based user management and RBAC enforcement to every API route.
-3. Add campaign/content persistence screens backed by Prisma.
-4. Add integration connectors for Gmail, Meta, LinkedIn, X, WhatsApp, and Google Calendar.
-5. Add usage limits, subscription plans, audit log viewer, and tenant billing.
+1. Foundation: responsive role-based UI, schema, Docker, and health route. ✅
+2. Authentication and tenant onboarding. ✅
+3. Agent manager with Paperclip adapter settings. ✅ foundation
+4. Approval workflows for publishing, email, CRM updates, and budget actions. ✅ foundation
+5. Campaign studio and content calendar. ✅ foundation
+6. Lead generation and CRM pipeline. ✅ foundation
+7. Integrations: Gmail, Meta, LinkedIn, X, WhatsApp, Calendar, and file storage. Next
+8. Billing, plans, usage limits, audit logs, and admin reporting. Next

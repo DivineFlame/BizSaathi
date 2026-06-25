@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { createPaperclipTask } from "@/lib/paperclip";
+import { audit } from "@/lib/audit";
 
 const taskSchema = z.object({
   agentSlug: z.string().min(2),
@@ -54,5 +55,30 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, task, paperclip }, { status: 201 });
+  let approval = null;
+  if (task.approvalRequired) {
+    approval = await db.approvalRequest.create({
+      data: {
+        tenantId: user.tenantId,
+        taskId: task.id,
+        requestedById: user.id,
+        title: `Approve: ${task.title}`,
+        description: task.goal,
+        riskLevel: "medium",
+        actionType: "agent_task_execution",
+        payload: { agentSlug: agent.slug, localTaskId: task.id, paperclipTaskId: paperclip.taskId },
+      },
+    });
+  }
+
+  await audit({
+    tenantId: user.tenantId,
+    userId: user.id,
+    action: "agent_task.create",
+    entity: "AgentTask",
+    entityId: task.id,
+    metadata: { agentSlug: agent.slug, paperclipMode: paperclip.mode, approvalId: approval?.id ?? null },
+  });
+
+  return NextResponse.json({ ok: true, task, paperclip, approval }, { status: 201 });
 }

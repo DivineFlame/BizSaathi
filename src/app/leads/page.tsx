@@ -1,9 +1,18 @@
 import { AppShell } from "@/components/app-shell";
+import { LeadForm } from "@/components/lead-form";
 import { PageHeader } from "@/components/page-header";
 import { Badge, ButtonLink, Card } from "@/components/ui";
-import { leads } from "@/data/agents";
+import { leads as demoLeads } from "@/data/agents";
+import { getCurrentUser } from "@/lib/auth";
+import { db } from "@/lib/db";
 
-export default function LeadsPage() {
+export default async function LeadsPage() {
+  const user = await getCurrentUser().catch(() => null);
+  const persisted = user ? await db.lead.findMany({ where: { tenantId: user.tenantId }, orderBy: [{ score: "desc" }, { updatedAt: "desc" }] }).catch(() => []) : [];
+  const list = persisted.length
+    ? persisted.map((lead) => ({ name: lead.company || lead.name, stage: lead.stage.replace("_", " "), score: lead.score, next: lead.nextAction ?? "Qualify next step" }))
+    : demoLeads;
+
   return (
     <AppShell active="/leads">
       <PageHeader
@@ -12,32 +21,39 @@ export default function LeadsPage() {
         description="Sales & CRM Agent drafts next actions and updates records only after the configured approval policy is satisfied."
         action={<ButtonLink href="/agents/sales-crm">Open Sales Agent</ButtonLink>}
       />
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-separate border-spacing-y-3 text-left">
-            <thead className="text-sm text-slate-500">
-              <tr>
-                <th className="px-4">Lead</th>
-                <th className="px-4">Stage</th>
-                <th className="px-4">Score</th>
-                <th className="px-4">Next action</th>
-                <th className="px-4">Agent control</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => (
-                <tr key={lead.name} className="rounded-3xl bg-slate-50">
-                  <td className="rounded-l-3xl px-4 py-4 font-black text-slate-950">{lead.name}</td>
-                  <td className="px-4 py-4"><Badge tone={lead.stage === "Negotiation" ? "warning" : "blue"}>{lead.stage}</Badge></td>
-                  <td className="px-4 py-4 font-black text-slate-900">{lead.score}</td>
-                  <td className="px-4 py-4 text-sm text-slate-600">{lead.next}</td>
-                  <td className="rounded-r-3xl px-4 py-4"><button className="rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">Draft follow-up</button></td>
+      <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-separate border-spacing-y-3 text-left">
+              <thead className="text-sm text-slate-500">
+                <tr>
+                  <th className="px-4">Lead</th>
+                  <th className="px-4">Stage</th>
+                  <th className="px-4">Score</th>
+                  <th className="px-4">Next action</th>
+                  <th className="px-4">Agent control</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody>
+                {list.map((lead) => (
+                  <tr key={`${lead.name}-${lead.stage}`} className="rounded-3xl bg-slate-50">
+                    <td className="rounded-l-3xl px-4 py-4 font-black text-slate-950">{lead.name}</td>
+                    <td className="px-4 py-4"><Badge tone={lead.stage === "NEGOTIATION" || lead.stage === "Negotiation" ? "warning" : "blue"}>{lead.stage}</Badge></td>
+                    <td className="px-4 py-4 font-black text-slate-900">{lead.score}</td>
+                    <td className="px-4 py-4 text-sm text-slate-600">{lead.next}</td>
+                    <td className="rounded-r-3xl px-4 py-4"><ButtonLink href="/agents/sales-crm/run" variant="secondary">Draft follow-up</ButtonLink></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+        <Card>
+          <h2 className="text-xl font-black text-slate-950">Capture lead</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">New leads are scored automatically and routed to Sales & CRM Agent for the next action.</p>
+          <div className="mt-5"><LeadForm /></div>
+        </Card>
+      </div>
     </AppShell>
   );
 }

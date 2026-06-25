@@ -86,7 +86,7 @@ export default async function HomePage() {
               <span className="text-sm font-black uppercase tracking-widest">Dokploy ready</span>
             </div>
             <p className="mt-3 text-2xl font-black">Deploy with raw compose and external PostgreSQL.</p>
-            <p className="mt-3 text-sm leading-6 text-white/65">Use `docker-compose.dokploy.yml`, connect Paperclip/Ollama on `dokploy-network`, and route the domain to port 3000.</p>
+            <p className="mt-3 text-sm leading-6 text-white/65">Use `docker-compose.dokploy.yml`, connect Paperclip/Ollama on `dokploy-network`, and route the domain to container port 8080.</p>
           </Card>
         </div>
       </div>

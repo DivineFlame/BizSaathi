@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Bot, CheckSquare, Gauge, Megaphone, Settings, Users, Workflow, Target } from "lucide-react";
+import { Bot, CheckSquare, FileText, Gauge, Megaphone, Settings, Users, Workflow, Target, ScrollText } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Gauge },
   { href: "/agents", label: "Agents", icon: Bot },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/content-studio", label: "Content", icon: FileText },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/approvals", label: "Approvals", icon: CheckSquare },
+  { href: "/audit", label: "Audit", icon: ScrollText },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -26,7 +28,7 @@ export function AppShell({ children, active = "/" }: { children: React.ReactNode
             </div>
           </Link>
 
-          <nav className="mt-7 space-y-2">
+          <nav className="mt-7 space-y-2 overflow-y-auto pr-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = active === item.href || (item.href !== "/" && active.startsWith(item.href));
@@ -49,31 +51,26 @@ export function AppShell({ children, active = "/" }: { children: React.ReactNode
           <div className="mt-auto rounded-3xl border border-blue-100 bg-blue-50 p-4">
             <div className="mb-3 flex items-center gap-2 text-blue-700">
               <Target className="h-5 w-5" />
-              <span className="text-sm font-bold">Governance mode</span>
+              <span className="text-sm font-black uppercase tracking-widest">Default guardrail</span>
             </div>
-            <p className="text-sm leading-6 text-blue-950/75">
-              All publishing, CRM updates, budget changes, and outbound messages are routed through human approval rules.
-            </p>
+            <p className="text-sm leading-6 text-blue-950">Agents can draft, plan, and prepare. External actions need human approval.</p>
           </div>
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
-          <div className="flex items-center justify-between gap-3">
-            <Link href="/" className="flex items-center gap-2 font-black">
-              <span className="rounded-xl bg-slate-950 p-2 text-white"><Workflow className="h-5 w-5" /></span>
-              BizSaathi
-            </Link>
-            <Link href="/login" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">Login</Link>
+      <div className="min-w-0">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/85 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mb-3 flex items-center justify-between">
+            <Link href="/" className="font-black text-slate-950">BizSaathi</Link>
+            <Link href="/settings" className="rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white">Settings</Link>
           </div>
-          <nav className="mobile-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">
+          <nav className="flex gap-2 overflow-x-auto pb-1">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold",
+                  "whitespace-nowrap rounded-full px-3 py-2 text-xs font-black",
                   active === item.href || (item.href !== "/" && active.startsWith(item.href))
                     ? "bg-blue-600 text-white"
                     : "bg-slate-100 text-slate-700",

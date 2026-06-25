@@ -40,7 +40,7 @@ export async function setSessionCookie(payload: SessionPayload) {
   cookieStore.set(env.AUTH_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: env.AUTH_COOKIE_SECURE === "true",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });

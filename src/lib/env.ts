@@ -4,6 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().optional(),
   AUTH_SECRET: z.string().min(32).optional(),
   AUTH_COOKIE_NAME: z.string().default("bizsaathi_session"),
+  AUTH_COOKIE_SECURE: z.enum(["true", "false"]).default(process.env.NODE_ENV === "production" ? "true" : "false"),
   PAPERCLIP_API_URL: z.string().url().optional().or(z.literal("")),
   PAPERCLIP_API_KEY: z.string().optional(),
   OLLAMA_BASE_URL: z.string().url().optional().or(z.literal("")),
